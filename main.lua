@@ -5153,7 +5153,7 @@ function Library:CreateWindow(WindowInfo)
                 Position = UDim2.fromOffset(0, 9),
                 Parent = GroupboxLabel,
             })
-            GroupboxLabel.Text = "  " .. Info.Name
+            GroupboxLabel.Text = Info.Name
         else
             GroupboxLabel.Text = Info.Name
         end
@@ -5162,8 +5162,8 @@ function Library:CreateWindow(WindowInfo)
     end
 
     New("UIPadding", {
-        PaddingLeft = UDim.new(0, 10),
-        PaddingRight = UDim.new(0, 10),
+        PaddingLeft = UDim.new(0, 12),
+        PaddingRight = UDim.new(0, 12),
         Parent = GroupboxLabel,
     })
 
