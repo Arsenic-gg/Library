@@ -5150,7 +5150,7 @@ function Library:CreateWindow(WindowInfo)
                 ImageRectOffset = IconData.ImageRectOffset,
                 ImageRectSize = IconData.ImageRectSize,
                 Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(0, 6),
+                Position = UDim2.fromOffset(0, 12),
                 Parent = GroupboxLabel,
             })
             GroupboxLabel.Text = "  " .. Info.Name
