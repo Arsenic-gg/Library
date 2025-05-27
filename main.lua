@@ -5145,15 +5145,16 @@ function Library:CreateWindow(WindowInfo)
         local IconData = Library:GetIcon(Info.Icon)
         if IconData then
             Icon = New("ImageLabel", {
-                BackgroundTransparency = 1,
-                Image = IconData.Url,
-                ImageRectOffset = IconData.ImageRectOffset,
-                ImageRectSize = IconData.ImageRectSize,
-                Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(0, 12),
-                Parent = GroupboxLabel,
+		BackgroundTransparency = 1,
+		Image = IconData.Url,
+		ImageRectOffset = IconData.ImageRectOffset,
+		ImageRectSize = IconData.ImageRectSize,
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.fromOffset(10, 10),
+		ZIndex = GroupboxLabel.ZIndex,
+		Parent = GroupboxLabel,
             })
-            GroupboxLabel.Text = "  " .. Info.Name
+            GroupboxLabel.Text = Info.Name
         else
             GroupboxLabel.Text = Info.Name
         end
@@ -5162,7 +5163,7 @@ function Library:CreateWindow(WindowInfo)
     end
 
     New("UIPadding", {
-        PaddingLeft = UDim.new(0, 12),
+        PaddingLeft = UDim.new(0, 30),
         PaddingRight = UDim.new(0, 12),
         Parent = GroupboxLabel,
     })
