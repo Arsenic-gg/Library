@@ -5150,7 +5150,7 @@ function Library:CreateWindow(WindowInfo)
                 ImageRectOffset = IconData.ImageRectOffset,
                 ImageRectSize = IconData.ImageRectSize,
                 Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(-1, 9),
+                Position = UDim2.fromOffset(0, 9),
                 Parent = GroupboxLabel,
             })
             GroupboxLabel.Text = Info.Name
@@ -5162,8 +5162,8 @@ function Library:CreateWindow(WindowInfo)
     end
 
     New("UIPadding", {
-        PaddingLeft = UDim.new(0, 12),
-        PaddingRight = UDim.new(0, 12),
+        PaddingLeft = UDim.new(0, 28),
+        PaddingRight = UDim.new(0, 28),
         Parent = GroupboxLabel,
     })
 
