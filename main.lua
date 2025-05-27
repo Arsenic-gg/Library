@@ -5153,7 +5153,7 @@ function Library:CreateWindow(WindowInfo)
                 Position = UDim2.fromOffset(0, 6),
                 Parent = GroupboxLabel,
             })
-            GroupboxLabel.Text = "    " .. Info.Name
+            GroupboxLabel.Text = "  " .. Info.Name
         else
             GroupboxLabel.Text = Info.Name
         end
