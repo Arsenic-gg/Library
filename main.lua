@@ -5162,8 +5162,8 @@ function Library:CreateWindow(WindowInfo)
     end
 
     New("UIPadding", {
-        PaddingLeft = UDim.new(0, 28),
-        PaddingRight = UDim.new(0, 28),
+        PaddingLeft = UDim.new(0, 16),
+        PaddingRight = UDim.new(0, 16),
         Parent = GroupboxLabel,
     })
 
