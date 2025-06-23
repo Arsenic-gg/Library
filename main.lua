@@ -192,7 +192,7 @@ local Templates = {
         ClearTextOnFocus = true,
         Placeholder = "",
         AllowEmpty = true,
-        EmptyReset = "---",
+        EmptyReset = "None",
 
         Callback = function() end,
         Changed = function() end,
@@ -3732,7 +3732,7 @@ do
             BorderSizePixel = 1,
             Position = UDim2.fromScale(0, 1),
             Size = UDim2.new(1, 0, 0, 21),
-            Text = "---",
+            Text = "None",
             TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
             Parent = Holder,
@@ -3849,7 +3849,7 @@ do
                 Str = Str:sub(1, 22) .. "..."
             end
 
-            Display.Text = (Str == "" and "---" or Str)
+            Display.Text = (Str == "" and "None" or Str)
         end
 
         function Dropdown:OnChanged(Func)
