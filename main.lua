@@ -855,6 +855,10 @@ function Library:Validate(Table: { [string]: any }, Template: { [string]: any })
     end
 
     for k, v in pairs(Template) do
+        if typeof(k) == "number" then
+            continue
+        end
+
         if typeof(v) == "table" then
             Table[k] = Library:Validate(Table[k], v)
         elseif Table[k] == nil then
@@ -3947,6 +3951,7 @@ do
 
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+						Library:UpdateDependencyBoxes()
                     end)
                 end
 
@@ -3986,6 +3991,7 @@ do
             if not Dropdown.Disabled then
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+				Library:UpdateDependencyBoxes()
             end
         end
 
@@ -4156,11 +4162,25 @@ do
             for _, Dependency in pairs(Depbox.Dependencies) do
                 local Element = Dependency[1]
                 local Value = Dependency[2]
-
+                
                 if Element.Type == "Toggle" and Element.Value ~= Value then
                     DepboxContainer.Visible = false
                     Depbox.Visible = false
                     return
+                elseif Element.Type == "Dropdown" then
+                    if typeof(Element.Value) == "table" then
+                        if not Element.Value[Value] then
+                            DepboxContainer.Visible = false
+                            Depbox.Visible = false
+                            return
+                        end
+                    else
+                        if Element.Value ~= Value then
+                            DepboxContainer.Visible = false
+                            Depbox.Visible = false
+                            return
+                        end
+                    end
                 end
             end
 
@@ -4262,6 +4282,20 @@ do
                     Background.Visible = false
                     DepGroupbox.Visible = false
                     return
+                elseif Element.Type == "Dropdown" then
+                    if typeof(Element.Value) == "table" then
+                        if not Element.Value[Value] then
+                            Background.Visible = false
+                            DepGroupbox.Visible = false
+                            return
+                        end
+                    else
+                        if Element.Value ~= Value then
+                            Background.Visible = false
+                            DepGroupbox.Visible = false
+                            return
+                        end
+                    end
                 end
             end
 
@@ -4332,18 +4366,22 @@ function Library:Notify(...)
         Data.Time = Info.Time or 5
         Data.SoundId = Info.SoundId
         Data.Steps = Info.Steps
+        Data.Persist = Info.Persist
     else
         Data.Description = tostring(Info)
         Data.Time = select(2, ...) or 5
         Data.SoundId = select(3, ...)
     end
+    Data.Destroyed = false
 
-    local DeletedTime = false
+    local DeletedInstance = false
+    local DeleteConnection = nil
     if typeof(Data.Time) == "Instance" then
-        local Con
-        Con = Data.Time.Destroying:Connect(function()
-            DeletedTime = true
-            Con:Disconnect()
+        DeleteConnection = Data.Time.Destroying:Connect(function()
+            DeletedInstance = true
+
+            DeleteConnection:Disconnect()
+            DeleteConnection = nil
         end)
     end
 
@@ -4476,12 +4514,29 @@ function Library:Notify(...)
         end
     end
 
+    function Data:Destroy()
+        Data.Destroyed = true
+        if DeleteConnection then
+            DeleteConnection:Disconnect()
+        end
+
+        TweenService
+            :Create(Background, Library.NotifyTweenInfo, {
+                Position = Library.NotifySide:lower() == "left" and UDim2.new(-1, -6, 0, -2) or UDim2.new(1, 6, 0, -2),
+            })
+            :Play()
+        task.delay(Library.NotifyTweenInfo.Time, function()
+            Library.Notifications[FakeBackground] = nil
+            FakeBackground:Destroy()
+        end)
+    end
+
     Data:Resize()
 
     local TimerHolder = New("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 7),
-        Visible = typeof(Data.Time) ~= "Instance" or typeof(Data.Steps) == "number",
+        Visible = (Data.Persist ~= true and typeof(Data.Time) ~= "Instance") or typeof(Data.Steps) == "number",
         Parent = Holder,
     })
     local TimerBar = New("Frame", {
@@ -4518,10 +4573,12 @@ function Library:Notify(...)
     }):Play()
 
     task.delay(Library.NotifyTweenInfo.Time, function()
-        if typeof(Data.Time) == "Instance" then
+        if Data.Persist then
+            return
+        elseif typeof(Data.Time) == "Instance" then
             repeat
                 task.wait()
-            until DeletedTime == true
+            until DeletedInstance or Data.Destroyed
         else
             TweenService
                 :Create(TimerFill, TweenInfo.new(Data.Time, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {
@@ -4531,15 +4588,9 @@ function Library:Notify(...)
             task.wait(Data.Time)
         end
 
-        TweenService
-            :Create(Background, Library.NotifyTweenInfo, {
-                Position = Library.NotifySide:lower() == "left" and UDim2.new(-1, -6, 0, -2) or UDim2.new(1, 6, 0, -2),
-            })
-            :Play()
-        task.delay(Library.NotifyTweenInfo.Time, function()
-            Library.Notifications[FakeBackground] = nil
-            FakeBackground:Destroy()
-        end)
+        if not Data.Destroyed then
+            Data:Destroy()
+        end
     end)
 
     return Data
@@ -5099,131 +5150,123 @@ function Library:CreateWindow(WindowInfo)
             end
         end
 
-	function Tab:AddGroupbox(Info)
-    	local BoxHolder = New("Frame", {
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1,
-        Size = UDim2.fromScale(1, 0),
-        Parent = Info.Side == 1 and TabLeft or TabRight,
-    })
-    New("UIListLayout", {
-        Padding = UDim.new(0, 6),
-        Parent = BoxHolder,
-    })
+        function Tab:AddGroupbox(Info)
+            local BoxHolder = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Parent = Info.Side == 1 and TabLeft or TabRight,
+            })
+            New("UIListLayout", {
+                Padding = UDim.new(0, 6),
+                Parent = BoxHolder,
+            })
 
-    local Background = Library:MakeOutline(BoxHolder, WindowInfo.CornerRadius)
-    Background.Size = UDim2.fromScale(1, 0)
-    Library:UpdateDPI(Background, { Size = false })
+            local Background = Library:MakeOutline(BoxHolder, WindowInfo.CornerRadius)
+            Background.Size = UDim2.fromScale(1, 0)
+            Library:UpdateDPI(Background, {
+                Size = false,
+            })
 
-    local GroupboxHolder = New("Frame", {
-        BackgroundColor3 = "BackgroundColor",
-        Position = UDim2.fromOffset(2, 2),
-        Size = UDim2.new(1, -4, 1, -4),
-        Parent = Background,
-    })
-    New("UICorner", {
-        CornerRadius = UDim.new(0, WindowInfo.CornerRadius - 1),
-        Parent = GroupboxHolder,
-    })
-    Library:MakeLine(GroupboxHolder, {
-        Position = UDim2.fromOffset(0, 34),
-        Size = UDim2.new(1, 0, 0, 1),
-    })
+            local GroupboxHolder
+            local GroupboxLabel
 
-    local GroupboxLabel = New("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 34),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextSize = 15,
-        FontFace = Library.Scheme.Font,
-        TextColor3 = Library.Scheme.FontColor,
-        Parent = GroupboxHolder,
-    })
+            local GroupboxContainer
+            local GroupboxList
 
-	local Icon
-	if Info.Icon then
-	    local IconData = Library:GetIcon(Info.Icon)
-	    if IconData then
-	        GroupboxLabel.Position = UDim2.fromOffset(4, 0)
-	        Icon = New("ImageLabel", {
-	            BackgroundTransparency = 1,
-	            Image = IconData.Url,
-	            ImageRectOffset = IconData.ImageRectOffset,
-	            ImageRectSize = IconData.ImageRectSize,
-	            Size = UDim2.fromOffset(16, 16),
-	            Position = UDim2.fromOffset(-8, 9),
-	            Parent = GroupboxLabel,
-	        })
-	        GroupboxLabel.Text = "  " .. Info.Name
-	    else
-	        GroupboxLabel.Text = Info.Name
-	    end
-	else
-	    GroupboxLabel.Text = Info.Name
-	end
+            do
+                GroupboxHolder = New("Frame", {
+                    BackgroundColor3 = "BackgroundColor",
+                    Position = UDim2.fromOffset(2, 2),
+                    Size = UDim2.new(1, -4, 1, -4),
+                    Parent = Background,
+                })
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, WindowInfo.CornerRadius - 1),
+                    Parent = GroupboxHolder,
+                })
+                Library:MakeLine(GroupboxHolder, {
+                    Position = UDim2.fromOffset(0, 34),
+                    Size = UDim2.new(1, 0, 0, 1),
+                })
 
-    New("UIPadding", {
-        PaddingLeft = UDim.new(0, 12),
-        PaddingRight = UDim.new(0, 12),
-        Parent = GroupboxLabel,
-    })
+                local BoxIcon = Library:GetIcon(Info.IconName)
+                if BoxIcon then
+                    New("ImageLabel", {
+                        Image = BoxIcon.Url,
+                        ImageColor3 = "AccentColor",
+                        ImageRectOffset = BoxIcon.ImageRectOffset,
+                        ImageRectSize = BoxIcon.ImageRectSize,
+                        Position = UDim2.fromOffset(6, 6),
+                        Size = UDim2.fromOffset(22, 22),
+                        Parent = GroupboxHolder,
+                    })
+                end
 
-    local GroupboxContainer = New("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(0, 35),
-        Size = UDim2.new(1, 0, 1, -35),
-        Parent = GroupboxHolder,
-    })
+                GroupboxLabel = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.fromOffset(BoxIcon and 24 or 0, 0),
+                    Size = UDim2.new(1, 0, 0, 34),
+                    Text = Info.Name,
+                    TextSize = 15,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = GroupboxHolder,
+                })
+                New("UIPadding", {
+                    PaddingLeft = UDim.new(0, 12),
+                    PaddingRight = UDim.new(0, 12),
+                    Parent = GroupboxLabel,
+                })
 
-    local GroupboxList = New("UIListLayout", {
-        Padding = UDim.new(0, 8),
-        Parent = GroupboxContainer,
-    })
+                GroupboxContainer = New("Frame", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.fromOffset(0, 35),
+                    Size = UDim2.new(1, 0, 1, -35),
+                    Parent = GroupboxHolder,
+                })
 
-    New("UIPadding", {
-        PaddingBottom = UDim.new(0, 7),
-        PaddingLeft = UDim.new(0, 7),
-        PaddingRight = UDim.new(0, 7),
-        PaddingTop = UDim.new(0, 7),
-        Parent = GroupboxContainer,
-    })
+                GroupboxList = New("UIListLayout", {
+                    Padding = UDim.new(0, 8),
+                    Parent = GroupboxContainer,
+                })
+                New("UIPadding", {
+                    PaddingBottom = UDim.new(0, 7),
+                    PaddingLeft = UDim.new(0, 7),
+                    PaddingRight = UDim.new(0, 7),
+                    PaddingTop = UDim.new(0, 7),
+                    Parent = GroupboxContainer,
+                })
+            end
 
-    local Groupbox = {
-        BoxHolder = BoxHolder,
-        Holder = Background,
-        Container = GroupboxContainer,
-        Tab = Tab,
-        DependencyBoxes = {},
-        Elements = {},
-    }
+            local Groupbox = {
+                BoxHolder = BoxHolder,
+                Holder = Background,
+                Container = GroupboxContainer,
 
-    function Groupbox:Resize()
-        Background.Size = UDim2.new(1, 0, 0, GroupboxList.AbsoluteContentSize.Y + 53 * Library.DPIScale)
-    end
+                Tab = Tab,
+                DependencyBoxes = {},
+                Elements = {},
+            }
 
-    		setmetatable(Groupbox, BaseGroupbox)
+            function Groupbox:Resize()
+                Background.Size = UDim2.new(1, 0, 0, GroupboxList.AbsoluteContentSize.Y + 53 * Library.DPIScale)
+            end
 
-    		Groupbox:Resize()
-    		Tab.Groupboxes[Info.Name] = Groupbox
+            setmetatable(Groupbox, BaseGroupbox)
 
-    		return Groupbox
-	end
+            Groupbox:Resize()
+            Tab.Groupboxes[Info.Name] = Groupbox
 
-	function Tab:AddLeftGroupbox(Name, IconName)
-    	    return self:AddGroupbox({
-        	Name = Name,
-        	Side = 1,
-        	Icon = IconName,
-    	    })
-	end
+            return Groupbox
+        end
 
-	function Tab:AddRightGroupbox(Name, IconName)
-    	    return self:AddGroupbox({
-                Name = Name,
-                Side = 2,
-                Icon = IconName,
-             })
-         end
+        function Tab:AddLeftGroupbox(Name, IconName)
+            return Tab:AddGroupbox({ Side = 1, Name = Name, IconName = IconName })
+        end
+
+        function Tab:AddRightGroupbox(Name, IconName)
+            return Tab:AddGroupbox({ Side = 2, Name = Name, IconName = IconName })
+        end
 
         function Tab:AddTabbox(Info)
             local BoxHolder = New("Frame", {
